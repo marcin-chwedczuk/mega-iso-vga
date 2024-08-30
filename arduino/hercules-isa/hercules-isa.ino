@@ -2459,13 +2459,36 @@ void update_cursor(uint16_t pos)
 
 
 uint32_t abc = 0xB8000, ii = 0, attr = 0x17;
+bool done = false;
 
 void loop() {
+  if (! done) {
+    // clear screen
+    abc = 0xB8000;
+    for (int i = 0; i < 25; i++) {
+      for (int j = 0; j < 80; j++) {
+        writeMemory(abc, 0x0000);
+        abc += 2;
+      }
+    }
+
+    abc = 0xB8000;
+    update_cursor(0);
+    const char* str = "Hello world!";
+    while(*str) {
+      writeMemory(abc, (attr << 8) + (*str));
+
+      str++;
+      abc += 2;
+    }
+  }
+  done = true;
+  /*
   writeMemory(abc, (attr << 8) + (ii & 0xFF));
   abc += 2;
-update_cursor(ii);  ii +=1;
+  update_cursor(ii);  ii +=1;
 
   if (ii > (80 * 25)) {
     ii = 0; attr++; abc = 0xB8000;
-  }
+  }*/
 }
