@@ -2,6 +2,9 @@
 // References:
 // https://files.osdev.org/mirrors/geezer/osd/graphics/modes.c
 // https://chromium.googlesource.com/chromiumos/third_party/seabios/+/refs/heads/0.14.811.B/vgasrc/vgaio.c
+// https://android.googlesource.com/kernel/msm.git/+/android-9.0.0_r0.1/include/video/trident.h
+// https://cdn.netbsd.org/pub/NetBSD/NetBSD-current/src/sys/arch/amiga/dev/grf_cv3dreg.h
+// https://www.vgamuseum.info/index.php/component/k2/item/443-trident-tvga9000i-1
 
 
 // ISA Address is mapped to pins [30..53] (addr 0 - 23), which addr0 at pin 30
@@ -9,191 +12,10 @@
 
 // ISA Data is mapped to pins A[0..7] with A0 being mapped to data0
 
+#include "isa.h"
+#include "vga.h"
 #include "font.h"
-
-#define PIN_ALE 4
-#define PIN_MEM_16BIT 5
-#define PIN_MEMW 3
-#define PIN_MEMR 2
-#define PIN_IOW 10
-#define PIN_IOR 11
-#define PIN_RESET 12
-#define PIN_WAITSTATE 13
-
-void ale(bool active) { digitalWrite(PIN_ALE, active ? HIGH : LOW); }
-
-bool mem16bit() { return !!digitalRead(PIN_MEM_16BIT); }
-
-void memw(bool active) { digitalWrite(PIN_MEMW, active ? LOW : HIGH); }
-void memr(bool active) { digitalWrite(PIN_MEMR, active ? LOW : HIGH); }
-
-void iow(bool active) { digitalWrite(PIN_IOW, active ? LOW : HIGH); }
-void ior(bool active) { digitalWrite(PIN_IOR, active ? LOW : HIGH); }
-
-void waitForDevice() {
-  delay(0); // initial delay
-  while (!digitalRead(PIN_WAITSTATE)) {
-    // wait
-  }
-}
-
-void setAddress(uint32_t address) {
-  for (int pin = 30; pin < 50; pin++) {
-    uint8_t bit = (address & 1u);
-    digitalWrite(pin, bit ? HIGH : LOW);
-    address >>= 1;
-  }
-}
-
-void enableDataOutput(bool enable) {
-  int dataPins[] = {A0, A1, A2, A3, A4, A5, A6, A7};
-  for (int i = 0; i < 8; i++) {
-    pinMode(dataPins[i], enable ? OUTPUT : INPUT);
-  }
-}
-
-void setData(uint8_t data) {
-  int dataPins[] = {A0, A1, A2, A3, A4, A5, A6, A7};
-  for (int i = 0; i < 8; i++) {
-    uint16_t bit = (data & 1u);
-    digitalWrite(dataPins[i], bit ? HIGH : LOW);
-    data >>= 1;
-  }
-}
-
-uint8_t readData() {
-  int dataPins[] = {A0, A1, A2, A3, A4, A5, A6, A7};
-  uint16_t data = 0;
-  for (int i = 0; i < 8; i++) {
-    data = (data << 1) | digitalRead(dataPins[7 - i]);
-  }
-  return data;
-}
-
-void writeMemoryByte(uint32_t address, uint8_t data) {
-  setAddress(address);
-  ale(true);
-  delay(0);
-  ale(false); // lock upper address bits
-
-  enableDataOutput(true);
-  setData(data);
-  delay(0);
-
-  memw(true);
-  waitForDevice();
-  memw(false);
-
-  enableDataOutput(false);
-}
-
-void writeMemory(uint32_t address, uint16_t data) {
-  writeMemoryByte(address, data & 0xFFu);
-  writeMemoryByte(address + 1, ((data >> 8) & 0xFF));
-}
-
-uint8_t readMemoryByte(uint32_t address) {
-  setAddress(address);
-  ale(true);
-  delay(0);
-  ale(false); // lock upper address bits
-
-  enableDataOutput(false);
-  delay(0);
-
-  memr(true);
-  delay(0);
-  waitForDevice();
-  uint8_t data = readData();
-  memr(false);
-
-  return data;
-}
-
-uint16_t readMemory(uint32_t address) {
-  return readMemoryByte(address) |
-         (((uint16_t)readMemoryByte(address + 1)) << 8);
-}
-
-void writeIO(uint32_t portAddress, uint16_t data) {
-  setAddress(portAddress);
-  ale(true);
-  delay(0);
-  ale(false); // lock upper address bits
-
-  enableDataOutput(true);
-  setData(data);
-  delay(0);
-
-  iow(true);
-  delay(0);
-  waitForDevice();
-  iow(false);
-
-  enableDataOutput(false);
-}
-
-uint16_t readIO(uint32_t portAddress) {
-  // mem16bit(true);
-
-  setAddress(portAddress);
-  ale(true);
-  delay(0);
-  ale(false); // lock upper address bits
-
-  enableDataOutput(false);
-
-  ior(true);
-  delay(0);
-  waitForDevice();
-
-  uint16_t data = readData();
-
-  ior(false);
-
-  return data;
-
-  // mem16bit(false);
-}
-
-void VgaIoWriteIx(uint32_t addr, uint16_t valIx) {
-  writeIO(addr, valIx & 0xFFu);
-  writeIO(addr + 1, (valIx >> 8) & 0xFFu);
-}
-
-uint8_t VgaIoReadIx(uint32_t addr, uint8_t ix) {
-  uint16_t data = 0;
-  writeIO(addr, ix);
-  return readIO(addr + 1);
-}
-
-// VGA Stuff 
-
-#define	VGA_AC_INDEX		    0x3C0
-#define	VGA_AC_WRITE		    0x3C0
-#define	VGA_AC_READ		      0x3C1
-#define	VGA_MISC_WRITE	    0x3C2
-#define VGA_SEQ_INDEX		    0x3C4
-#define VGA_SEQ_DATA		    0x3C5
-#define	VGA_DAC_READ_INDEX	0x3C7
-#define	VGA_DAC_WRITE_INDEX	0x3C8
-#define	VGA_DAC_DATA		    0x3C9
-#define	VGA_MISC_READ		    0x3CC
-#define VGA_GC_INDEX 		    0x3CE
-#define VGA_GC_DATA 		    0x3CF
-#define VGA_VIDEO_ENABLE    0x3C3
-/*			COLOR emulation		MONO emulation */
-#define VGA_CRTC_INDEX		  0x3D4		/* 0x3B4 */
-#define VGA_CRTC_DATA		    0x3D5		/* 0x3B5 */
-#define	VGA_INSTAT_READ		  0x3DA // Status register
-
-#define	VGA_NUM_SEQ_REGS	  5
-#define	VGA_NUM_CRTC_REGS	  25
-#define	VGA_NUM_GC_REGS		  9
-#define	VGA_NUM_AC_REGS		  21
-#define	VGA_NUM_REGS		    (1 + VGA_NUM_SEQ_REGS + VGA_NUM_CRTC_REGS + VGA_NUM_GC_REGS + VGA_NUM_AC_REGS)
-
-
+#include "trident.h"
 
 void loadFont() {
   VgaIoWriteIx(VGA_GC_INDEX, 0x0005);
@@ -217,75 +39,6 @@ void loadFont() {
   VgaIoWriteIx(VGA_GC_INDEX, 0x1005);
   VgaIoWriteIx(VGA_GC_INDEX, 0x0E06);
 }
-
-#define IoPortOutB writeIO
-#define IoPortInB readIO
-
-//*********************************************************************
-void sub_2EA(void) {
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0x000B); // Set oldmode
-}
-//*********************************************************************
-uint8_t sub_292(void) {
-  sub_2EA();                         // Set oldmode
-  return (VgaIoReadIx(VGA_SEQ_INDEX, 0x0D)); // Old mode VGA_SEQ_INDEX.0x0D read
-}
-//*********************************************************************
-
-uint8_t sub_4D9(void) {
-  uint8_t al;
-
-  al = sub_292() & 0x0E;
-  if (al != 0x0C)
-    return (1); // return no zero
-  al = IoPortInB(VGA_MISC_READ) & 0x67;
-  if (al != 0x67)
-    return (1); // return no zero
-  return (0);
-}
-
-//*********************************************************************
-uint8_t sub_26A() {
-  VgaIoReadIx(VGA_SEQ_INDEX, 0x0B); // New mode set
-  VgaIoWriteIx(VGA_SEQ_INDEX, (((VgaIoReadIx(VGA_SEQ_INDEX, 0x0E) | 0x80) ^ 2) << 8) + 0x0E);
-  return (VgaIoReadIx(VGA_SEQ_INDEX, 0x0C));
-}
-//*********************************************************************
-void sub_179(void) {
-  // SP BP manipulate
-  VgaIoWriteIx(VGA_SEQ_INDEX, (((sub_26A() | 0x42) & 0xFE) << 8) + 0x0C);
-  VgaIoWriteIx(VGA_SEQ_INDEX, ((VgaIoReadIx(VGA_SEQ_INDEX, 0x0F) | 0x80) << 8) + 0x0F);
-  VgaIoWriteIx(VGA_SEQ_INDEX, (((VgaIoReadIx(VGA_SEQ_INDEX, 0x0E) & 0x7F) ^ 2) << 8) + 0x0E);
-}
-//*********************************************************************
-void sub_51A(void) {
-  uint8_t al, bh;
-  bh = (sub_26A() | 0x80) & 0xFE;
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0x2407);
-  IoPortOutB(VGA_MISC_WRITE, 0x01);
-  if (!((al = VgaIoReadIx(VGA_CRTC_INDEX, 0x28)) & 0x0C)) {
-    al |= 0x04;
-    VgaIoWriteIx(VGA_CRTC_INDEX, (al << 8) + 0x28);
-  }
-  VgaIoWriteIx(VGA_SEQ_INDEX, ((VgaIoReadIx(VGA_SEQ_INDEX, 0x0F) & 0x7F) << 8) + 0x0F);
-  VgaIoWriteIx(VGA_SEQ_INDEX, (bh << 8) + 0x0C);
-  VgaIoWriteIx(VGA_SEQ_INDEX, (((VgaIoReadIx(VGA_SEQ_INDEX, 0x0E) & 0x7F) ^ 2) << 8) + 0x0E);
-  if (VgaIoReadIx(VGA_SEQ_INDEX, 0x0F) & 0x08) {
-    sub_179();
-  }
-  sub_2EA(); // Old mode
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0x200D);
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0xA00E);
-  VgaIoReadIx(VGA_SEQ_INDEX, 0x0B); // New mode
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0x020E);
-  if (!((al = VgaIoReadIx(VGA_GC_INDEX, 0x06)) & 0x0C)) {
-    VgaIoWriteIx(VGA_GC_INDEX, (((al & 0xF3) | 0x04) << 8) + 0x06);
-  }
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0x000D);
-  al = VgaIoReadIx(VGA_CRTC_INDEX, 0x1E);
-  VgaIoWriteIx(VGA_CRTC_INDEX, 0x001E);
-}
-//*********************************************************************
 
 uint8_t Pal16[192] =
     //  R    G    B
@@ -401,10 +154,10 @@ uint8_t Pal[768] = {
 
 //*********************************************************************
 void setpal(uint8_t color, uint8_t r, uint8_t g, uint8_t b) {
-  IoPortOutB(VGA_DAC_WRITE_INDEX, color);
-  IoPortOutB(VGA_DAC_DATA, r);
-  IoPortOutB(VGA_DAC_DATA, g);
-  IoPortOutB(VGA_DAC_DATA, b);
+  writeIO(VGA_DAC_WRITE_INDEX, color);
+  writeIO(VGA_DAC_DATA, r);
+  writeIO(VGA_DAC_DATA, g);
+  writeIO(VGA_DAC_DATA, b);
 }
 
 //*********************************************************************
@@ -430,19 +183,6 @@ void setpalette256() {
 }
 
 //*********************************************************************
-
-void TRSubsEnable(void) {
-  IoPortOutB(VGA_VIDEO_ENABLE, 0x00);
-  IoPortOutB(0x46E8, 0x16);
-  IoPortOutB(0x46E9, 0x00);
-  IoPortOutB(0x102, 0x01);
-  IoPortOutB(0x103, 0x00);
-  IoPortOutB(0x46E8, 0x0E);
-  IoPortOutB(0x46E9, 0x00);
-  IoPortOutB(0x4AE8, 0x00);
-  IoPortOutB(0x4AE9, 0x00);
-  //   IoPortOutB(VGA_MISC_WRITE,0x23);
-}
 
 typedef struct _VMODE_ST {
   uint8_t mode;            // Videomode Number
@@ -499,34 +239,24 @@ uint8_t mode13h[62] = {
     0x0C, 0x0D, 0x0E, 0x0F, 0x41, 0x00, 0x0F, 0x00, 0x00};
 
 
-// Video mode numbers
 
-#define MODE03H 0x03
-#define MODE12H 0x12
-#define MODE13H 0x13
-
-#define TVU_TEXT 0x0001
-#define TVU_GRAPHICS 0x0002
-#define TVU_MONOCHROME 0x0004
-#define TVU_PLANAR 0x0008
-#define TVU_UNCHAINED 0x0010
 
 void ModeSet(uint8_t *dataptr) {
 
   uint8_t i;
 
-  IoPortOutB(VGA_MISC_WRITE,
+  writeIO(VGA_MISC_WRITE,
              0x67); // Before acess registers must be set address sheme
 
-  IoPortOutB(VGA_MISC_WRITE, *dataptr);
+  writeIO(VGA_MISC_WRITE, *dataptr);
   dataptr++;
 
-  IoPortOutB(VGA_INSTAT_READ, *dataptr);
+  writeIO(VGA_INSTAT_READ, *dataptr);
   dataptr++;
 
   for (i = 0; i < 5; i++) {
-    IoPortOutB(VGA_SEQ_INDEX, i);
-    IoPortOutB(VGA_SEQ_INDEX + 1, *dataptr);
+    writeIO(VGA_SEQ_INDEX, i);
+    writeIO(VGA_SEQ_INDEX + 1, *dataptr);
     dataptr++;
   }
 
@@ -544,18 +274,18 @@ void ModeSet(uint8_t *dataptr) {
     dataptr++;
   }
 
-  i = IoPortInB(VGA_INSTAT_READ);
+  i = readIO(VGA_INSTAT_READ);
 
   for (i = 0; i < 21; i++) {
-    IoPortInB(VGA_INSTAT_READ);
-    IoPortOutB(VGA_AC_INDEX, i);
-    IoPortOutB(VGA_AC_INDEX, *dataptr);
+    readIO(VGA_INSTAT_READ);
+    writeIO(VGA_AC_INDEX, i);
+    writeIO(VGA_AC_INDEX, *dataptr);
     dataptr++;
   }
   VgaIoWriteIx(VGA_GC_INDEX, 0x3A0B);
-  IoPortInB(VGA_INSTAT_READ);
-  IoPortOutB(VGA_AC_INDEX, 0x20);
-  IoPortOutB(0x3C6, 0xFF);
+  readIO(VGA_INSTAT_READ);
+  writeIO(VGA_AC_INDEX, 0x20);
+  writeIO(VGA_PEL_MASK, 0xFF);
 }
 
 //*********************************************************************
@@ -598,43 +328,6 @@ void SetVideoMode(uint8_t mode) {
   }
 }
 
-void TR9000i_Init(void) {
-  TRSubsEnable();
-  VgaIoWriteIx(VGA_SEQ_INDEX, 0x000B); //  Force old_mode_registers
-  unsigned int chp =
-      IoPortInB(VGA_SEQ_DATA); //  Read chip ID and switch to new_mode_registers}
-  unsigned int old = VgaIoReadIx(VGA_SEQ_INDEX, 0x0E);
-  IoPortOutB(VGA_SEQ_DATA, 0x00);
-  unsigned int value = IoPortInB(VGA_SEQ_DATA) & 0x0F;
-  IoPortOutB(VGA_SEQ_DATA, old);
-  Serial.print("detected chip: ");
-  Serial.println(chp, HEX);
-  IoPortOutB(VGA_SEQ_DATA, old ^ 2);
-
-  uint16_t i = 0;
-  IoPortOutB(VGA_VIDEO_ENABLE, 0x00);
-  if (!sub_4D9()) {
-    Serial.println("Initialization failed.");
-    return;
-  }
-
-  do {
-    IoPortOutB(VGA_DAC_DATA, 0x00);
-    i++;
-  } while (i < 768);
-
-  IoPortOutB(VGA_MISC_WRITE, 0x23);
-  sub_51A();
-  //  IoPortOutB(VGA_CRTC_INDEX,0x1F);
-  //  IoPortOutB(VGA_CRTC_DATA,0x81);
-
-  //  IoPortOutB(VGA_CRTC_INDEX,0x25);
-  //  IoPortOutB(VGA_CRTC_DATA,0xFF);
-
-  // if(((sub_292()&0x0E)==0x0C)&& IoPortInB(VGA_MISC_READ)==0x67));
-}
-//*********************************************************************
-
 #define SEGMENT_OFFSET(seg, off) ((((uint32_t)(seg) << 8)) + (uint32_t)off)
 
 uint32_t VidMemBase = SEGMENT_OFFSET(0xB800, 0);
@@ -666,8 +359,8 @@ void TextClear(uint8_t attrib) {
 void pixel12H(uint16_t x, uint16_t y, uint8_t color) {
   VgaIoWriteIx(VGA_GC_INDEX, ((1 << (((x % 256) & 7) ^ 7)) << 8) + 0x08);
   VgaIoWriteIx(VGA_SEQ_INDEX, (color << 8) + 0x02);
-  readMemoryByte(0xA00000 + (y * 80) + (x >> 3));
-  writeMemoryByte(0xA00000 + (y * 80) + (x >> 3), 0xFF);
+  readMemoryByte(0xA0000 + (y * 80) + (x >> 3));
+  writeMemoryByte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
 }
 
 void Pixel13H(uint16_t x, uint16_t y, uint8_t color);
@@ -679,31 +372,31 @@ void pixel(uint16_t x, uint16_t y, uint8_t color) {
     Pixel13H(x, y, color);
   else if (Mode.attrib & TVU_UNCHAINED) {
 
-    //     IoPortOutB(VGA_SEQ_DATA,1<<((x%256)&3));
+    //     writeIO(VGA_SEQ_DATA,1<<((x%256)&3));
     VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
 
-    writeMemoryByte(0xA00000 + (x / 4) + (y * (width / 4)), color);
+    writeMemoryByte(0xA0000 + (x / 4) + (y * (width / 4)), color);
   } else if (Mode.attrib & TVU_PLANAR) {
 
-    //     IoPortOutB(VGA_GC_INDEX,0x08);
-    //     IoPortOutB(VGA_GC_DATA,1<<(((x%256)&7)^7));
-    //     IoPortOutB(VGA_GC_DATA,rv);
+    //     writeIO(VGA_GC_INDEX,0x08);
+    //     writeIO(VGA_GC_DATA,1<<(((x%256)&7)^7));
+    //     writeIO(VGA_GC_DATA,rv);
     VgaIoWriteIx(VGA_GC_INDEX, ((1 << (((x % 256) & 7) ^ 7)) << 8) + 0x08);
-    //     IoPortOutB(VGA_GC_DATA,0x0F);
-    //     IoPortOutB(VGA_SEQ_INDEX,0x02);
-    //     IoPortOutB(VGA_SEQ_DATA,color);
+    //     writeIO(VGA_GC_DATA,0x0F);
+    //     writeIO(VGA_SEQ_INDEX,0x02);
+    //     writeIO(VGA_SEQ_DATA,color);
     VgaIoWriteIx(VGA_SEQ_INDEX, (color << 8) + 0x02);
 
-    readMemoryByte(0xA00000 + (y * 80) + (x >> 3));
+    readMemoryByte(0xA0000 + (y * 80) + (x >> 3));
 
-    writeMemoryByte(0xA00000 + (y * 80) + (x >> 3), 0xFF);
+    writeMemoryByte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
 
-    //     IoPortOutB(VGA_SEQ_INDEX,0x02);
-    //     IoPortOutB(VGA_SEQ_DATA,0x0F);
+    //     writeIO(VGA_SEQ_INDEX,0x02);
+    //     writeIO(VGA_SEQ_DATA,0x0F);
     //     VgaIoWriteIx(VGA_SEQ_INDEX,(0x0F<<8)+0x02);
 
-    //     IoPortOutB(VGA_GC_INDEX,0x08);
-    //     IoPortOutB(VGA_GC_DATA,0xFF);
+    //     writeIO(VGA_GC_INDEX,0x08);
+    //     writeIO(VGA_GC_DATA,0xFF);
     //     VgaIoWriteIx(VGA_GC_INDEX,(0xFF<<8)+0x08);
   }
 }
@@ -715,7 +408,7 @@ void SetScrPage(uint8_t page) // Set desired screen page
   addr = 2000 * (page & 0x07);
   VgaIoWriteIx(VGA_CRTC_INDEX, ((addr / 256) << 8) + 0x0C);
   VgaIoWriteIx(VGA_CRTC_INDEX, ((addr % 256) << 8) + 0x0D);
-  VidMemBase = 0xB08000 + (addr << 1); // Error here?
+  VidMemBase = 0xB8000 + (addr << 1); // Error here?
 }
 //*********************************************************************
 void CursorOn(void) {
@@ -846,7 +539,7 @@ void setup() {
 }
 
 void Pixel13H(uint16_t x, uint16_t y, uint8_t color) {
-  //     IoPortOutB(VGA_SEQ_DATA,1<<((x%256)&3));
+  //     writeIO(VGA_SEQ_DATA,1<<((x%256)&3));
   VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
   //   XOR DI,DI
 
