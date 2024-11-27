@@ -1,21 +1,29 @@
-
 #include "trident.h"
 #include "isa.h"
 #include "vga.h"
 
-// TODO: Cleanup later
 #include <HardwareSerial.h>
 
-//*********************************************************************
+// Here are dragons. This is dump from Video BIOS decompilation.
+// I took the original from: www.tinyvga.com/avr-isa-vga project.
+
+// If you want to decompile the BIOS yourself, grab a copy from:
+// https://www.vgamuseum.info/index.php/component/k2/item/443-trident-tvga9000i-1
+// (use Bios link at the bottom of the page; easy to miss).
+// I have used Ghidra. Remember that first two bytes form a signature 0x55 0xAA and the third is
+// BIOS size in "sectors". So start decompilation from the 4th byte.
+// In Ghidra select x86 Real Mode. Click the 4th byte and select "Decompile" from context menu.
+// 
+
+
 void sub_2EA(void) {
   VgaIoWriteIx(VGA_SEQ_INDEX, 0x000B); // Set oldmode
 }
-//*********************************************************************
+
 uint8_t sub_292(void) {
   sub_2EA();                         // Set oldmode
   return (VgaIoReadIx(VGA_SEQ_INDEX, 0x0D)); // Old mode VGA_SEQ_INDEX.0x0D read
 }
-//*********************************************************************
 
 uint8_t sub_4D9(void) {
   uint8_t al;
@@ -29,20 +37,19 @@ uint8_t sub_4D9(void) {
   return (0);
 }
 
-//*********************************************************************
 uint8_t sub_26A() {
   VgaIoReadIx(VGA_SEQ_INDEX, 0x0B); // New mode set
   VgaIoWriteIx(VGA_SEQ_INDEX, (((VgaIoReadIx(VGA_SEQ_INDEX, 0x0E) | 0x80) ^ 2) << 8) + 0x0E);
   return (VgaIoReadIx(VGA_SEQ_INDEX, 0x0C));
 }
-//*********************************************************************
+
 void sub_179(void) {
   // SP BP manipulate
   VgaIoWriteIx(VGA_SEQ_INDEX, (((sub_26A() | 0x42) & 0xFE) << 8) + 0x0C);
   VgaIoWriteIx(VGA_SEQ_INDEX, ((VgaIoReadIx(VGA_SEQ_INDEX, 0x0F) | 0x80) << 8) + 0x0F);
   VgaIoWriteIx(VGA_SEQ_INDEX, (((VgaIoReadIx(VGA_SEQ_INDEX, 0x0E) & 0x7F) ^ 2) << 8) + 0x0E);
 }
-//*********************************************************************
+
 void sub_51A(void) {
   uint8_t al, bh;
   bh = (sub_26A() | 0x80) & 0xFE;
@@ -70,8 +77,6 @@ void sub_51A(void) {
   al = VgaIoReadIx(VGA_CRTC_INDEX, 0x1E);
   VgaIoWriteIx(VGA_CRTC_INDEX, 0x001E);
 }
-//*********************************************************************
-
 
 void TRSubsEnable(void) {
   isa_outb(VGA_VIDEO_ENABLE, 0x00);
@@ -83,9 +88,7 @@ void TRSubsEnable(void) {
   isa_outb(0x46E9, 0x00);
   isa_outb(0x4AE8, 0x00);
   isa_outb(0x4AE9, 0x00);
-  //   isa_outb(VGA_MISC_WRITE,0x23);
 }
-
 
 void TR9000i_Init(void) {
   TRSubsEnable();
@@ -114,11 +117,4 @@ void TR9000i_Init(void) {
 
   isa_outb(VGA_MISC_WRITE, 0x23);
   sub_51A();
-  //  isa_outb(VGA_CRTC_INDEX,0x1F);
-  //  isa_outb(VGA_CRTC_DATA,0x81);
-
-  //  isa_outb(VGA_CRTC_INDEX,0x25);
-  //  isa_outb(VGA_CRTC_DATA,0xFF);
-
-  // if(((sub_292()&0x0E)==0x0C)&& isa_inb(VGA_MISC_READ)==0x67));
 }
