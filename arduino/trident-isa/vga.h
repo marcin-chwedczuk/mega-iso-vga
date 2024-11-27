@@ -46,6 +46,24 @@
 #define TVU_PLANAR 0x0008
 #define TVU_UNCHAINED 0x0010
 
+// Text Color Constants
+#define VGA_BLACK         0x0
+#define VGA_BLUE          0x1
+#define VGA_GREEN         0x2
+#define VGA_CYAN          0x3
+#define VGA_RED           0x4
+#define VGA_MAGENTA       0x5
+#define VGA_BROWN         0x6
+#define VGA_LIGHT_GRAY    0x7
+#define VGA_DARK_GRAY     0x8
+#define VGA_LIGHT_BLUE    0x9
+#define VGA_LIGHT_GREEN   0xA
+#define VGA_LIGHT_CYAN    0xB
+#define VGA_LIGHT_RED     0xC
+#define VGA_LIGHT_MAGENTA 0xD
+#define VGA_YELLOW        0xE
+#define VGA_WHITE         0xF
+
 typedef struct _VMODE_ST {
   uint8_t mode;            // Videomode Number
   uint16_t width;          // Width in pixels
@@ -62,5 +80,9 @@ uint8_t VgaIoReadIx(uint32_t addr, uint8_t ix);
 void vga_set_mode(uint8_t mode);
 
 void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color);
+
+void vga_set_coursor_pos(uint8_t row, uint8_t col);
+void vga_cursor_visible(bool visible);
+void vga_set_character(uint8_t row, uint8_t col, char character, int fgColor, int bgColor);
 
 #endif

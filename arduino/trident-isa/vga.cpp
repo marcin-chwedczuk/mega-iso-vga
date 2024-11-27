@@ -161,26 +161,38 @@ void vga_set_mode(uint8_t mode) {
   }
 }
 
-void update_cursor(uint16_t pos) {
-  // uint16_t pos = y * mode.width + x;
+void vga_set_coursor_pos(uint8_t row, uint8_t col) {
+  uint16_t pos = 80*row + col;
 
+  // Set the high byte of cursor position
   isa_outb(VGA_CRTC_INDEX, 0x0F);
   isa_outb(VGA_CRTC_DATA, (uint8_t)(pos & 0xFF));
+
+  // Set the low byte of cursor position
   isa_outb(VGA_CRTC_INDEX, 0x0E);
   isa_outb(VGA_CRTC_DATA, (uint8_t)((pos >> 8) & 0xFF));
 }
 
-void TextClear(uint8_t attrib) {
-  uint16_t i, ilim = Mode.width_uint8_ts;
-  uint32_t address = VIDEO_MEMORY_CTEXT;
+void vga_cursor_visible(bool visible) {
+    isa_outb(VGA_CRTC_INDEX, 0x0A);
+    uint8_t reg = isa_inb(VGA_CRTC_DATA);
 
-  for (i = 0; i < ilim; i++) {
-    VgaMemoryWriteW(address, (attrib << 8) + ' ');
-    address++;
-    //    VgaMemoryWriteB(address,attrib);
-    address++;
-  }
-  update_cursor(0);
+    if (visible) {
+        // Clear the 5th bit to enable the cursor
+        reg &= ~0x20;
+    } else {
+        // Set the 5th bit to disable the cursor
+        reg |= 0x20;
+    }
+
+    isa_outb(VGA_CRTC_INDEX, 0x0A);
+    isa_outb(VGA_CRTC_DATA, reg);
+}
+
+void vga_set_character(uint8_t row, uint8_t col, char character, int fgColor, int bgColor) {
+    uint32_t offset = VIDEO_MEMORY_CTEXT + (row * Mode.width + col) * 2;
+    isa_write_byte(offset, character);
+    isa_write_byte(offset+1, (bgColor << 4) | (fgColor & 0x0F));
 }
 
 void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color) {
@@ -194,20 +206,4 @@ void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color) {
     isa_read_byte(0xA0000 + (y * 80) + (x >> 3));
     isa_write_byte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
   }
-}
-
-void SetScrPage(uint8_t page) // Set desired screen page
-{
-  uint32_t addr;
-
-  addr = 2000 * (page & 0x07);
-  VgaIoWriteIx(VGA_CRTC_INDEX, ((addr / 256) << 8) + 0x0C);
-  VgaIoWriteIx(VGA_CRTC_INDEX, ((addr % 256) << 8) + 0x0D);
-
-  // TODO: Handle multiple pages of text
-  // VidMemBase = VIDEO_MEMORY_CTEXT + (addr << 1); // Error here?
-}
-
-void CursorOn(void) {
-  VgaIoWriteIx(VGA_CRTC_INDEX, ((VgaIoReadIx(VGA_CRTC_INDEX, 0x0A) & (0xFF - 0x20)) << 8) + 0x0A);
 }
