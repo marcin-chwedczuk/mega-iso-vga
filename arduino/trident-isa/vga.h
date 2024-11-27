@@ -31,11 +31,14 @@
 #define	VGA_NUM_AC_REGS		  21
 #define	VGA_NUM_REGS		    (1 + VGA_NUM_SEQ_REGS + VGA_NUM_CRTC_REGS + VGA_NUM_GC_REGS + VGA_NUM_AC_REGS)
 
-// Video mode numbers
-
+// Video modes
 #define MODE03H 0x03
 #define MODE12H 0x12
 #define MODE13H 0x13
+
+// Start addresses of video memory
+#define VIDEO_MEMORY_GRAPH 0xA0000
+#define VIDEO_MEMORY_CTEXT 0xB8000
 
 #define TVU_TEXT 0x0001
 #define TVU_GRAPHICS 0x0002
@@ -43,8 +46,21 @@
 #define TVU_PLANAR 0x0008
 #define TVU_UNCHAINED 0x0010
 
+typedef struct _VMODE_ST {
+  uint8_t mode;            // Videomode Number
+  uint16_t width;          // Width in pixels
+  uint16_t height;         // Height in pixels
+  uint16_t width_uint8_ts; // Number of uint8_ts per screen
+  uint16_t colors;         // Number of colors
+  uint16_t attrib;         // Videomode attributes
+} VMODE_ST;
+
+
 void VgaIoWriteIx(uint32_t addr, uint16_t valIx);
 uint8_t VgaIoReadIx(uint32_t addr, uint8_t ix);
 
+void vga_set_mode(uint8_t mode);
+
+void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color);
 
 #endif

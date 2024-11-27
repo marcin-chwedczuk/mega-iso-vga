@@ -90,7 +90,7 @@ void TRSubsEnable(void) {
   isa_outb(0x4AE9, 0x00);
 }
 
-void TR9000i_Init(void) {
+void TR9000i_init(void) {
   TRSubsEnable();
   VgaIoWriteIx(VGA_SEQ_INDEX, 0x000B); //  Force old_mode_registers
   unsigned int chp =
