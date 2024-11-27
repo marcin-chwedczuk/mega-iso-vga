@@ -7,10 +7,6 @@
 // https://www.vgamuseum.info/index.php/component/k2/item/443-trident-tvga9000i-1
 
 
-// ISA Address is mapped to pins [30..53] (addr 0 - 23), which addr0 at pin 30
-// and addr19 at pin 50
-
-// ISA Data is mapped to pins A[0..7] with A0 being mapped to data0
 
 #include "isa.h"
 #include "vga.h"
@@ -421,49 +417,41 @@ void rect(int x, int y, int w, int h, uint8_t c) {
       pixel(i, j, c);
 }
 
-void DrawCircle(uint16_t x, uint16_t y, uint16_t rad, uint8_t color) {
-  long Hiba; // hiba valtozo
-  long X;
-  long Y;
-  long DU; // hiba modosito, ha csak X lepett
-  long DD; // hiba modosito, ha X es Y is lepett
+void drawCircle(int16_t x0, int16_t y0, int16_t r,
+                              uint16_t color) {
 
-  Hiba = 1L - rad;
-  X = 0;
-  Y = (long)rad;
-  DU = 3L;
-  DD = 5L - (2L * rad);
+  int16_t f = 1 - r;
+  int16_t ddF_x = 1;
+  int16_t ddF_y = -2 * r;
+  int16_t x = 0;
+  int16_t y = r;
 
-  // kezdopont kirajzol
-  pixel(X + x, Y + y, color);
-  // pixel12H(X+x,Y+y,color);
 
-  //  KorCikkInterpolal:
+  pixel(x0, y0 + r, color);
+  pixel(x0, y0 - r, color);
+  pixel(x0 + r, y0, color);
+  pixel(x0 - r, y0, color);
 
-  //  DoEvents
-
-  //  'Vege a 90 foktol 45 fokigtarto resznek?
-  while (!(X > Y)) {
-    //'x mindig lep
-    X = X + 1;
-    if (Hiba < 0) {
-      // az x-heztartozo felso y a jobb
-      // azaz az aktualison marad
-      Hiba = Hiba + DU;
-      DU = DU + 2;
-      DD = DD + 2;
-    } else {
-      // az x-heztartozo also y a jobb
-      // azzaz y mar lephet egyet lefele
-      Y = Y - 1;
-      Hiba = Hiba + DD;
-      DU = DU + 2;
-      DD = DD + 4;
+  while (x < y) {
+    if (f >= 0) {
+      y--;
+      ddF_y += 2;
+      f += ddF_y;
     }
-    // aktualis kirajzol
-    pixel(X + x, Y + y, color);
-    // pixel12H(X+x, Y+y,color);
+    x++;
+    ddF_x += 2;
+    f += ddF_x;
+
+    pixel(x0 + x, y0 + y, color);
+    pixel(x0 - x, y0 + y, color);
+    pixel(x0 + x, y0 - y, color);
+    pixel(x0 - x, y0 - y, color);
+    pixel(x0 + y, y0 + x, color);
+    pixel(x0 - y, y0 + x, color);
+    pixel(x0 + y, y0 - x, color);
+    pixel(x0 - y, y0 - x, color);
   }
+
 }
 
 void Clear13H(uint8_t Color) {
@@ -489,8 +477,6 @@ void setup() {
   digitalWrite(PIN_RESET, HIGH);
 
   pinMode(PIN_WAITSTATE, INPUT_PULLUP);
-
-  pinMode(PIN_MEM_16BIT, INPUT);
 
   pinMode(PIN_ALE, OUTPUT);
   digitalWrite(PIN_ALE, LOW);
@@ -523,14 +509,16 @@ void setup() {
 
   delay(3000);
   TR9000i_Init();
-  SetVideoMode(MODE03H);
+  SetVideoMode(MODE12H);
+  Clear13H(0x00);
 
-  // TextClear(0x0F);
+/*
+  TextClear(0xAA);
 
   SetScrPage(0);
   SetHwCursor(8);
   CursorOn();
-
+*/
   // Clear13H(0x00);
   // for (int i = 0; i < 300; i++) for (int j = 0; i < 300; i++) pixel(i, i,
   // 0x01);
@@ -540,7 +528,7 @@ void setup() {
 
 void Pixel13H(uint16_t x, uint16_t y, uint8_t color) {
   //     writeIO(VGA_SEQ_DATA,1<<((x%256)&3));
-  VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
+  // VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
   //   XOR DI,DI
 
   writeMemoryByte(0xA0000 + (x + (y * Mode.width)), color);
@@ -558,10 +546,30 @@ void update_cursor(uint16_t pos) {
   outb(VGA_CRTC_DATA, (uint8_t)((pos >> 8) & 0xFF));
 }
 
-uint32_t abc = 0xB8000, ii = 0, attr = 0x17;
+uint32_t abc = 0xB8000, ii = 0, attr = 0x0f;
 bool done = false;
 
+uint8_t color = 0x11;
+
 void loop() {
+  /*
+  int rx = random(50, 250);
+  int ry = random(50, 150);
+  int rr = random(10, 50);
+
+  drawCircle(rx, ry, rr, color++);*/
+
+  
+  for (int y = 0; y < 480; y++) {
+    for (int x = 0; x < 640; x++) {
+
+      pixel(x, y, y & 0xff);
+    }
+  }
+
+  delay(1000);
+
+  /*
   if (!done) {
     // clear screen
     abc = 0xB8000;
@@ -583,6 +591,7 @@ void loop() {
     }
   }
   done = true;
+  */
   /*
   writeMemory(abc, (attr << 8) + (ii & 0xFF));
   abc += 2;

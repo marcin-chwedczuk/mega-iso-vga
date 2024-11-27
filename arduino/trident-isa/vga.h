@@ -22,7 +22,7 @@
 /*			COLOR emulation		MONO emulation */
 #define VGA_CRTC_INDEX		  0x3D4		/* 0x3B4 */
 #define VGA_CRTC_DATA		    0x3D5		/* 0x3B5 */
-#define	VGA_INSTAT_READ		  0x3DA // Status register
+#define	VGA_INSTAT_READ		  0x3DA // Input Status register
 
 
 #define	VGA_NUM_SEQ_REGS	  5

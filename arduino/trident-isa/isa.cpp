@@ -5,8 +5,6 @@
 
 void ale(bool active) { digitalWrite(PIN_ALE, active ? HIGH : LOW); }
 
-bool mem16bit() { return !!digitalRead(PIN_MEM_16BIT); }
-
 void memw(bool active) { digitalWrite(PIN_MEMW, active ? LOW : HIGH); }
 void memr(bool active) { digitalWrite(PIN_MEMR, active ? LOW : HIGH); }
 
