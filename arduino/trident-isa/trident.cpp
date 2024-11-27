@@ -6,10 +6,6 @@
 // TODO: Cleanup later
 #include <HardwareSerial.h>
 
-
-#define IoPortOutB writeIO
-#define IoPortInB readIO
-
 //*********************************************************************
 void sub_2EA(void) {
   VgaIoWriteIx(VGA_SEQ_INDEX, 0x000B); // Set oldmode
@@ -27,7 +23,7 @@ uint8_t sub_4D9(void) {
   al = sub_292() & 0x0E;
   if (al != 0x0C)
     return (1); // return no zero
-  al = IoPortInB(VGA_MISC_READ) & 0x67;
+  al = isa_inb(VGA_MISC_READ) & 0x67;
   if (al != 0x67)
     return (1); // return no zero
   return (0);
@@ -51,7 +47,7 @@ void sub_51A(void) {
   uint8_t al, bh;
   bh = (sub_26A() | 0x80) & 0xFE;
   VgaIoWriteIx(VGA_SEQ_INDEX, 0x2407);
-  IoPortOutB(VGA_MISC_WRITE, 0x01);
+  isa_outb(VGA_MISC_WRITE, 0x01);
   if (!((al = VgaIoReadIx(VGA_CRTC_INDEX, 0x28)) & 0x0C)) {
     al |= 0x04;
     VgaIoWriteIx(VGA_CRTC_INDEX, (al << 8) + 0x28);
@@ -78,16 +74,16 @@ void sub_51A(void) {
 
 
 void TRSubsEnable(void) {
-  IoPortOutB(VGA_VIDEO_ENABLE, 0x00);
-  IoPortOutB(0x46E8, 0x16);
-  IoPortOutB(0x46E9, 0x00);
-  IoPortOutB(0x102, 0x01);
-  IoPortOutB(0x103, 0x00);
-  IoPortOutB(0x46E8, 0x0E);
-  IoPortOutB(0x46E9, 0x00);
-  IoPortOutB(0x4AE8, 0x00);
-  IoPortOutB(0x4AE9, 0x00);
-  //   IoPortOutB(VGA_MISC_WRITE,0x23);
+  isa_outb(VGA_VIDEO_ENABLE, 0x00);
+  isa_outb(0x46E8, 0x16);
+  isa_outb(0x46E9, 0x00);
+  isa_outb(0x102, 0x01);
+  isa_outb(0x103, 0x00);
+  isa_outb(0x46E8, 0x0E);
+  isa_outb(0x46E9, 0x00);
+  isa_outb(0x4AE8, 0x00);
+  isa_outb(0x4AE9, 0x00);
+  //   isa_outb(VGA_MISC_WRITE,0x23);
 }
 
 
@@ -95,34 +91,34 @@ void TR9000i_Init(void) {
   TRSubsEnable();
   VgaIoWriteIx(VGA_SEQ_INDEX, 0x000B); //  Force old_mode_registers
   unsigned int chp =
-      IoPortInB(VGA_SEQ_DATA); //  Read chip ID and switch to new_mode_registers}
+      isa_inb(VGA_SEQ_DATA); //  Read chip ID and switch to new_mode_registers}
   unsigned int old = VgaIoReadIx(VGA_SEQ_INDEX, 0x0E);
-  IoPortOutB(VGA_SEQ_DATA, 0x00);
-  unsigned int value = IoPortInB(VGA_SEQ_DATA) & 0x0F;
-  IoPortOutB(VGA_SEQ_DATA, old);
+  isa_outb(VGA_SEQ_DATA, 0x00);
+  unsigned int value = isa_inb(VGA_SEQ_DATA) & 0x0F;
+  isa_outb(VGA_SEQ_DATA, old);
   Serial.print("detected chip: ");
   Serial.println(chp, HEX);
-  IoPortOutB(VGA_SEQ_DATA, old ^ 2);
+  isa_outb(VGA_SEQ_DATA, old ^ 2);
 
   uint16_t i = 0;
-  IoPortOutB(VGA_VIDEO_ENABLE, 0x00);
+  isa_outb(VGA_VIDEO_ENABLE, 0x00);
   if (!sub_4D9()) {
     Serial.println("Initialization failed.");
     return;
   }
 
   do {
-    IoPortOutB(VGA_DAC_DATA, 0x00);
+    isa_outb(VGA_DAC_DATA, 0x00);
     i++;
   } while (i < 768);
 
-  IoPortOutB(VGA_MISC_WRITE, 0x23);
+  isa_outb(VGA_MISC_WRITE, 0x23);
   sub_51A();
-  //  IoPortOutB(VGA_CRTC_INDEX,0x1F);
-  //  IoPortOutB(VGA_CRTC_DATA,0x81);
+  //  isa_outb(VGA_CRTC_INDEX,0x1F);
+  //  isa_outb(VGA_CRTC_DATA,0x81);
 
-  //  IoPortOutB(VGA_CRTC_INDEX,0x25);
-  //  IoPortOutB(VGA_CRTC_DATA,0xFF);
+  //  isa_outb(VGA_CRTC_INDEX,0x25);
+  //  isa_outb(VGA_CRTC_DATA,0xFF);
 
-  // if(((sub_292()&0x0E)==0x0C)&& IoPortInB(VGA_MISC_READ)==0x67));
+  // if(((sub_292()&0x0E)==0x0C)&& isa_inb(VGA_MISC_READ)==0x67));
 }

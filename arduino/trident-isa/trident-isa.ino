@@ -26,7 +26,7 @@ void loadFont() {
       ptr += 16;
     }
 
-    writeMemoryByte(ptr++, Font8x16[i + 1]);
+    isa_write_byte(ptr++, Font8x16[i + 1]);
   }
 
   VgaIoWriteIx(VGA_SEQ_INDEX, 0x0302);
@@ -150,10 +150,10 @@ uint8_t Pal[768] = {
 
 //*********************************************************************
 void setpal(uint8_t color, uint8_t r, uint8_t g, uint8_t b) {
-  writeIO(VGA_DAC_WRITE_INDEX, color);
-  writeIO(VGA_DAC_DATA, r);
-  writeIO(VGA_DAC_DATA, g);
-  writeIO(VGA_DAC_DATA, b);
+  isa_outb(VGA_DAC_WRITE_INDEX, color);
+  isa_outb(VGA_DAC_DATA, r);
+  isa_outb(VGA_DAC_DATA, g);
+  isa_outb(VGA_DAC_DATA, b);
 }
 
 //*********************************************************************
@@ -241,18 +241,18 @@ void ModeSet(uint8_t *dataptr) {
 
   uint8_t i;
 
-  writeIO(VGA_MISC_WRITE,
+  isa_outb(VGA_MISC_WRITE,
              0x67); // Before acess registers must be set address sheme
 
-  writeIO(VGA_MISC_WRITE, *dataptr);
+  isa_outb(VGA_MISC_WRITE, *dataptr);
   dataptr++;
 
-  writeIO(VGA_INSTAT_READ, *dataptr);
+  isa_outb(VGA_INSTAT_READ, *dataptr);
   dataptr++;
 
   for (i = 0; i < 5; i++) {
-    writeIO(VGA_SEQ_INDEX, i);
-    writeIO(VGA_SEQ_INDEX + 1, *dataptr);
+    isa_outb(VGA_SEQ_INDEX, i);
+    isa_outb(VGA_SEQ_INDEX + 1, *dataptr);
     dataptr++;
   }
 
@@ -270,18 +270,18 @@ void ModeSet(uint8_t *dataptr) {
     dataptr++;
   }
 
-  i = readIO(VGA_INSTAT_READ);
+  i = isa_inb(VGA_INSTAT_READ);
 
   for (i = 0; i < 21; i++) {
-    readIO(VGA_INSTAT_READ);
-    writeIO(VGA_AC_INDEX, i);
-    writeIO(VGA_AC_INDEX, *dataptr);
+    isa_inb(VGA_INSTAT_READ);
+    isa_outb(VGA_AC_INDEX, i);
+    isa_outb(VGA_AC_INDEX, *dataptr);
     dataptr++;
   }
   VgaIoWriteIx(VGA_GC_INDEX, 0x3A0B);
-  readIO(VGA_INSTAT_READ);
-  writeIO(VGA_AC_INDEX, 0x20);
-  writeIO(VGA_PEL_MASK, 0xFF);
+  isa_inb(VGA_INSTAT_READ);
+  isa_outb(VGA_AC_INDEX, 0x20);
+  isa_outb(VGA_PEL_MASK, 0xFF);
 }
 
 //*********************************************************************
@@ -335,7 +335,7 @@ void SetHwCursor(uint16_t pos) {
   VgaIoWriteIx(VGA_CRTC_INDEX, ((CursorScreen % 256) << 8) + 0x0F);
 }
 
-void VgaMemoryWriteW(uint32_t addr, uint16_t data) { writeMemory(addr, data); }
+void VgaMemoryWriteW(uint32_t addr, uint16_t data) { isa_write_word(addr, data); }
 
 void TextClear(uint8_t attrib) {
   uint16_t i, ilim = Mode.width_uint8_ts;
@@ -355,8 +355,8 @@ void TextClear(uint8_t attrib) {
 void pixel12H(uint16_t x, uint16_t y, uint8_t color) {
   VgaIoWriteIx(VGA_GC_INDEX, ((1 << (((x % 256) & 7) ^ 7)) << 8) + 0x08);
   VgaIoWriteIx(VGA_SEQ_INDEX, (color << 8) + 0x02);
-  readMemoryByte(0xA0000 + (y * 80) + (x >> 3));
-  writeMemoryByte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
+  isa_read_byte(0xA0000 + (y * 80) + (x >> 3));
+  isa_write_byte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
 }
 
 void Pixel13H(uint16_t x, uint16_t y, uint8_t color);
@@ -368,31 +368,31 @@ void pixel(uint16_t x, uint16_t y, uint8_t color) {
     Pixel13H(x, y, color);
   else if (Mode.attrib & TVU_UNCHAINED) {
 
-    //     writeIO(VGA_SEQ_DATA,1<<((x%256)&3));
+    //     isa_outb(VGA_SEQ_DATA,1<<((x%256)&3));
     VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
 
-    writeMemoryByte(0xA0000 + (x / 4) + (y * (width / 4)), color);
+    isa_write_byte(0xA0000 + (x / 4) + (y * (width / 4)), color);
   } else if (Mode.attrib & TVU_PLANAR) {
 
-    //     writeIO(VGA_GC_INDEX,0x08);
-    //     writeIO(VGA_GC_DATA,1<<(((x%256)&7)^7));
-    //     writeIO(VGA_GC_DATA,rv);
+    //     isa_outb(VGA_GC_INDEX,0x08);
+    //     isa_outb(VGA_GC_DATA,1<<(((x%256)&7)^7));
+    //     isa_outb(VGA_GC_DATA,rv);
     VgaIoWriteIx(VGA_GC_INDEX, ((1 << (((x % 256) & 7) ^ 7)) << 8) + 0x08);
-    //     writeIO(VGA_GC_DATA,0x0F);
-    //     writeIO(VGA_SEQ_INDEX,0x02);
-    //     writeIO(VGA_SEQ_DATA,color);
+    //     isa_outb(VGA_GC_DATA,0x0F);
+    //     isa_outb(VGA_SEQ_INDEX,0x02);
+    //     isa_outb(VGA_SEQ_DATA,color);
     VgaIoWriteIx(VGA_SEQ_INDEX, (color << 8) + 0x02);
 
-    readMemoryByte(0xA0000 + (y * 80) + (x >> 3));
+    isa_read_byte(0xA0000 + (y * 80) + (x >> 3));
 
-    writeMemoryByte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
+    isa_write_byte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
 
-    //     writeIO(VGA_SEQ_INDEX,0x02);
-    //     writeIO(VGA_SEQ_DATA,0x0F);
+    //     isa_outb(VGA_SEQ_INDEX,0x02);
+    //     isa_outb(VGA_SEQ_DATA,0x0F);
     //     VgaIoWriteIx(VGA_SEQ_INDEX,(0x0F<<8)+0x02);
 
-    //     writeIO(VGA_GC_INDEX,0x08);
-    //     writeIO(VGA_GC_DATA,0xFF);
+    //     isa_outb(VGA_GC_INDEX,0x08);
+    //     isa_outb(VGA_GC_DATA,0xFF);
     //     VgaIoWriteIx(VGA_GC_INDEX,(0xFF<<8)+0x08);
   }
 }
@@ -461,7 +461,7 @@ void Clear13H(uint8_t Color) {
 
   i = 0;
   do {
-    writeMemoryByte(address, Color);
+    isa_write_byte(address, Color);
     address++;
     i++;
   } while (i);
@@ -472,40 +472,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
-  // Setup reset pin, raise RESET line
-  pinMode(PIN_RESET, OUTPUT);
-  digitalWrite(PIN_RESET, HIGH);
-
-  pinMode(PIN_WAITSTATE, INPUT_PULLUP);
-
-  pinMode(PIN_ALE, OUTPUT);
-  digitalWrite(PIN_ALE, LOW);
-
-  // Setup memory management pins
-  pinMode(PIN_MEMW, OUTPUT);
-  digitalWrite(PIN_MEMW, HIGH);
-
-  pinMode(PIN_MEMR, OUTPUT);
-  digitalWrite(PIN_MEMR, HIGH);
-
-  pinMode(PIN_IOW, OUTPUT);
-  digitalWrite(PIN_IOW, HIGH);
-
-  pinMode(PIN_IOR, OUTPUT);
-  digitalWrite(PIN_IOR, HIGH);
-
-  // Setup Address bus pins
-  for (int pin = 30; pin <= 53; pin++) {
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, LOW);
-  }
-
-  // Setup data lines
-  enableDataOutput(false);
-
-  // "Unreset" device
-  delay(1);
-  digitalWrite(PIN_RESET, LOW);
+  isa_arduino_setup();
 
   delay(3000);
   TR9000i_Init();
@@ -527,15 +494,15 @@ void setup() {
 }
 
 void Pixel13H(uint16_t x, uint16_t y, uint8_t color) {
-  //     writeIO(VGA_SEQ_DATA,1<<((x%256)&3));
+  //     isa_outb(VGA_SEQ_DATA,1<<((x%256)&3));
   // VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
   //   XOR DI,DI
 
-  writeMemoryByte(0xA0000 + (x + (y * Mode.width)), color);
+  isa_write_byte(0xA0000 + (x + (y * Mode.width)), color);
 }
 
-#define outb writeIO
-#define inb readIO
+#define outb isa_outb
+#define inb isa_inb
 
 void update_cursor(uint16_t pos) {
   // uint16_t pos = y * mode.width + x;
@@ -575,7 +542,7 @@ void loop() {
     abc = 0xB8000;
     for (int i = 0; i < 25; i++) {
       for (int j = 0; j < 80; j++) {
-        writeMemory(abc, 0x0000);
+        isa_write_word(abc, 0x0000);
         abc += 2;
       }
     }
@@ -584,7 +551,7 @@ void loop() {
     update_cursor(0);
     const char *str = "Hello world!";
     while (*str) {
-      writeMemory(abc, (attr << 8) + (*str));
+      isa_write_word(abc, (attr << 8) + (*str));
 
       str++;
       abc += 2;
@@ -593,7 +560,7 @@ void loop() {
   done = true;
   */
   /*
-  writeMemory(abc, (attr << 8) + (ii & 0xFF));
+  isa_write_word(abc, (attr << 8) + (ii & 0xFF));
   abc += 2;
   update_cursor(ii);  ii +=1;
 
