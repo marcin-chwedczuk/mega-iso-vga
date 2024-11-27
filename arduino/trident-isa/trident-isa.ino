@@ -23,12 +23,13 @@ void setup() {
   delay(1000);
 
   TR9000i_init();
-  vga_set_mode(MODE03H);
+  vga_set_mode(MODE12H);
 
   Serial.println("initialized");
 }
 
 void loop() {
+  /*
   vga_cursor_visible(true);
 
   console_clear();
@@ -38,6 +39,18 @@ void loop() {
     console_puts("Hello, world!\n", fc, VGA_WHITE);
     delay(1000);
   }
+  */
 
+  uint16_t r = 0;
+  uint32_t ptr = VIDEO_MEMORY_GRAPH;
+  do {
+    // isa_write_byte(ptr++, 0x00);
+    r++;
+  } while (r);
+
+  for (int i = 0; i < 16; i++) {
+  gfx_draw_circle(150, 150, 100+i, i);
+    gfx_draw_circle(250, 150, 100+i, i);
+  }
   delay(60000);
 }

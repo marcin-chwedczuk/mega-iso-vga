@@ -199,6 +199,7 @@ void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color) {
   int width = Mode.width;
 
   if (Mode.mode == MODE13H) {
+    // VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
     isa_write_byte(0xA0000 + (x + (y * Mode.width)), color);
   } else if (Mode.attrib & TVU_PLANAR) {
     VgaIoWriteIx(VGA_GC_INDEX, ((1 << (((x % 256) & 7) ^ 7)) << 8) + 0x08);
