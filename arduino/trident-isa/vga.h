@@ -68,7 +68,7 @@ typedef struct _VMODE_ST {
   uint8_t mode;            // Videomode Number
   uint16_t width;          // Width in pixels
   uint16_t height;         // Height in pixels
-  uint16_t width_uint8_ts; // Number of uint8_ts per screen
+  uint16_t width_bytes;    // Number of bytes per screen
   uint16_t colors;         // Number of colors
   uint16_t attrib;         // Videomode attributes
 } VMODE_ST;
@@ -78,12 +78,14 @@ void VgaIoWriteIx(uint32_t addr, uint16_t valIx);
 uint8_t VgaIoReadIx(uint32_t addr, uint8_t ix);
 
 void vga_set_mode(uint8_t mode);
+const VMODE_ST* vga_get_current_mode();
 
-void vga_mode12h_screen_clear(uint8_t color);
+void vga_screen_clear(uint8_t color);
 void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color);
 
 void vga_set_coursor_pos(uint8_t row, uint8_t col);
 void vga_cursor_visible(bool visible);
-void vga_set_character(uint8_t row, uint8_t col, char character, int fgColor, int bgColor);
+void vga_set_character(uint8_t row, uint8_t col, char character, uint8_t attribs);
+void vga_set_blinking(bool enabled);
 
 #endif
