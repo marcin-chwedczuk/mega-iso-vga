@@ -5,10 +5,10 @@ Use old Trident TVGA9000I-1 (7210 REVH1) ISA VGA card with Arduino Mega.
 <table>
     <tr>
         <td>
-            <img src="./pics/demo_text.jpeg" width="256" />
+            <img src="./pics/demo_text.jpg" width="256" />
         </td>
         <td>
-            <img src="./pics/demo_low.jpeg" width="256" />
+            <img src="./pics/demo_low.jpg" width="256" />
         </td>
         <td>
             <img src="./pics/demo_hi.jpeg" width="256" />
