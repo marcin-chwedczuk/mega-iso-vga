@@ -49,10 +49,18 @@ void isa_arduino_setup() {
   digitalWrite(PIN_IOR, HIGH);
 
   // Setup address bus pins on pins [30..50)
+  DDRA = 0xFF;
+  PORTA = 0x00;
+  DDRC = 0xFF;
+  PORTC = 0x00;
+  DDRL = 0xFF;
+  PORTL = 0x00;
+  /*
   for (int pin = 30; pin < 50; pin++) {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
   }
+  */
 
   // Setup data lines
   isa_enable_output_lines(false);
@@ -88,47 +96,68 @@ void isa_wait_device_ready() {
 }
 
 void isa_set_address(uint32_t address) {
+  // PORTL[3..0] | PORTC[7..0] | PORTA[7...0]
+
+  /*
   for (int pin = 30; pin < 50; pin++) {
     uint8_t bit = (address & 1u);
     digitalWrite(pin, bit ? HIGH : LOW);
     address >>= 1;
-  }
+  }*/
+
+  PORTA = (uint8_t)((address >> 0)  & 0xFF);
+  PORTC = (uint8_t)((address >> 8)  & 0xFF);
+  PORTL = (uint8_t)((address >> 16) & 0xFF);
 }
 
 void isa_enable_output_lines(bool enable) {
+  DDRF = enable ? 0xFF : 0x00;
+  if (!enable) {
+    PORTF = 0x00; // Disable pull'ups
+  }
+
+  /*
   int dataPins[] = { A0, A1, A2, A3, A4, A5, A6, A7 };
   for (int i = 0; i < 8; i++) {
     pinMode(dataPins[i], enable ? OUTPUT : INPUT);
   }
+  */
 }
 
 void isa_set_data(uint8_t data) {
+  /*
   int dataPins[] = { A0, A1, A2, A3, A4, A5, A6, A7 };
   for (int i = 0; i < 8; i++) {
     uint16_t bit = (data & 1u);
     digitalWrite(dataPins[i], bit ? HIGH : LOW);
     data >>= 1;
   }
+  */
+
+  PORTF = data;
 }
 
 uint8_t isa_read_data() {
+  /*
   int dataPins[] = { A0, A1, A2, A3, A4, A5, A6, A7 };
   uint16_t data = 0;
   for (int i = 0; i < 8; i++) {
     data = (data << 1) | digitalRead(dataPins[7 - i]);
   }
   return data;
+  */
+  return PINF;
 }
 
 void isa_write_byte(uint32_t address, uint8_t data) {
   isa_set_address(address);
   isa_ale(true);
-  delay(0);
+  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(true);
   isa_set_data(data);
-  delay(0);
+  // delay(0);
 
   isa_memw(true);
   isa_wait_device_ready();
@@ -145,14 +174,14 @@ void isa_write_word(uint32_t address, uint16_t data) {
 uint8_t isa_read_byte(uint32_t address) {
   isa_set_address(address);
   isa_ale(true);
-  delay(0);
+  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(false);
-  delay(0);
+  // delay(0);
 
   isa_memr(true);
-  delay(0);
+  // delay(0);
   isa_wait_device_ready();
   uint8_t data = isa_read_data();
   isa_memr(false);
@@ -167,15 +196,15 @@ uint16_t isa_read_word(uint32_t address) {
 void isa_outb(uint32_t portAddress, uint8_t data) {
   isa_set_address(portAddress);
   isa_ale(true);
-  delay(0);
+  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(true);
   isa_set_data(data);
-  delay(0);
+  // delay(0);
 
   isa_iow(true);
-  delay(0);
+  // delay(0);
   isa_wait_device_ready();
   isa_iow(false);
 
@@ -185,13 +214,13 @@ void isa_outb(uint32_t portAddress, uint8_t data) {
 uint8_t isa_inb(uint32_t portAddress) {
   isa_set_address(portAddress);
   isa_ale(true);
-  delay(0);
+  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(false);
 
   isa_ior(true);
-  delay(0);
+  // delay(0);
   isa_wait_device_ready();
   uint8_t data = isa_read_data();
   isa_ior(false);

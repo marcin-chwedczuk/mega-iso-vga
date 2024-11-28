@@ -5,6 +5,9 @@
 // https://android.googlesource.com/kernel/msm.git/+/android-9.0.0_r0.1/include/video/trident.h
 // https://cdn.netbsd.org/pub/NetBSD/NetBSD-current/src/sys/arch/amiga/dev/grf_cv3dreg.h
 // https://www.vgamuseum.info/index.php/component/k2/item/443-trident-tvga9000i-1
+//
+// https://github.com/qemu/qemu-palcode/blob/master/vgaio.c
+// https://chromium.googlesource.com/chromiumos/third_party/seabios/+/refs/heads/release-1011.B/vgasrc/vgaio.c
 
 
 #include "vga.h"
@@ -35,16 +38,17 @@ void loop() {
   console_clear();
   // console_set_cursor(0, 0);
   for (int fc = 0; fc < 16; fc++) {
-    vga_set_coursor_pos(fc, 0);
+    // vga_set_coursor_pos(fc, 0);
     console_puts("Hello, world!\n", fc, VGA_WHITE);
     delay(1000);
   }
   */
 
+  
   uint16_t r = 0;
   uint32_t ptr = VIDEO_MEMORY_GRAPH;
   do {
-    // isa_write_byte(ptr++, 0x00);
+    isa_write_byte(ptr++, 0x00);
     r++;
   } while (r);
 
