@@ -1,15 +1,28 @@
 # mega-iso-vga
 
-An attempt to use old Trident TVGA9000I-1 (7210 REVH1) ISA VGA card with Arduino Mega.
+Use old Trident TVGA9000I-1 (7210 REVH1) ISA VGA card with Arduino Mega.
 
-Current state of the project: MESS + BIG BALL OF MUD.
+<table>
+    <tr>
+        <td>
+            <img src="./pics/demo_text.jpeg" width="256" />
+        </td>
+        <td>
+            <img src="./pics/demo_low.jpeg" width="256" />
+        </td>
+        <td>
+            <img src="./pics/demo_hi.jpeg" width="256" />
+        </td>
+    </tr>
+</table>
 
-Currently text mode is working, somehow, but still in a buggy way.
-Graphic mode 11h (640 x 480) can be entered but the pixel addressing is broken.
+Supported modes:
 
-Pic or didn't happen:
-![board](./pics/board.png)
-![screen](./pics/screen.png)
+* Mode03H - Text mode, 80 x 25, 16 colors, blinking
+* Mode13H - Video mode, 320 x 200, 256 colors
+* Mode 12H - Video mode, 640 x 480, 16 colors
+
+There are still some bugs related to VGA planes. But overall the demo is working.
 
 ## Based on work
 
