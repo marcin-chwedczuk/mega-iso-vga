@@ -2,18 +2,20 @@
 #include "isa.h"
 #include <Arduino.h>
 
-// ISA Address is mapped to pins [30..50) (addr 0 - 23), with addr0 at pin 30
-// and addr19 at pin 49
+// ISA Address is mapped to ports:
+// MSB ------------- LSB
+// ISA address[19..0]
+// PORTL[3..0] | PORTC[7..0] | PORTA[7...0]
 
 // ISA Data is mapped to pins A[0..7] with A0 being mapped to data0
 
-#define PIN_RESET 12
-#define PIN_ALE 4
-#define PIN_MEMW 3
-#define PIN_MEMR 2
-#define PIN_IOW 10
-#define PIN_IOR 11
-#define PIN_WAITSTATE 13
+#define PIN_RESET 12  // PORTB.6
+#define PIN_ALE 4   // PORTG.5
+#define PIN_MEMW 3  // PORTE.5
+#define PIN_MEMR 2  // PORTE.4
+#define PIN_IOW 10  // PORTB.4
+#define PIN_IOR 11  // PORTB.5
+#define PIN_WAITSTATE 13  // PORTB.7
 
 // Private functions:
 void isa_ale(bool active);
@@ -70,27 +72,40 @@ void isa_arduino_setup() {
   digitalWrite(PIN_RESET, LOW);
 }
 
+#define PIN_RESET 12  // PORTB.6
+#define PIN_ALE 4   // PORTG.5
+#define PIN_MEMW 3  // PORTE.5
+#define PIN_MEMR 2  // PORTE.4
+#define PIN_IOW 10  // PORTB.4
+#define PIN_IOR 11  // PORTB.5
+#define PIN_WAITSTATE 13  // PORTB.7
+
 void isa_ale(bool active) {
-  digitalWrite(PIN_ALE, active ? HIGH : LOW);
+  PORTG = (PORTG & 0b11011111) | (active ? 0b00100000 : 0);
+  // digitalWrite(PIN_ALE, active ? HIGH : LOW);
 }
 
 void isa_memw(bool active) {
-  digitalWrite(PIN_MEMW, active ? LOW : HIGH);
+  PORTE = (PORTE & 0b11011111) | (active ? 0 : 0b00100000);
+  // digitalWrite(PIN_MEMW, active ? LOW : HIGH);
 }
 void isa_memr(bool active) {
-  digitalWrite(PIN_MEMR, active ? LOW : HIGH);
+  PORTE = (PORTE & 0b11101111) | (active ? 0 : 0b00010000);
+  // digitalWrite(PIN_MEMR, active ? LOW : HIGH);
 }
 
 void isa_iow(bool active) {
-  digitalWrite(PIN_IOW, active ? LOW : HIGH);
+  PORTB = (PORTB & 0b11101111) | (active ? 0 : 0b00010000);
+  // digitalWrite(PIN_IOW, active ? LOW : HIGH);
 }
 void isa_ior(bool active) {
-  digitalWrite(PIN_IOR, active ? LOW : HIGH);
+  PORTB = (PORTB & 0b11011111) | (active ? 0 : 0b00100000);
+  // digitalWrite(PIN_IOR, active ? LOW : HIGH);
 }
 
 void isa_wait_device_ready() {
-  delay(0);  // initial delay
-  while (!digitalRead(PIN_WAITSTATE)) {
+  delay(0); // This is NEEDED here, timing issues
+  while (!(PINB & 0b10000000)) {
     // wait
   }
 }
@@ -152,12 +167,10 @@ uint8_t isa_read_data() {
 void isa_write_byte(uint32_t address, uint8_t data) {
   isa_set_address(address);
   isa_ale(true);
-  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(true);
   isa_set_data(data);
-  // delay(0);
 
   isa_memw(true);
   isa_wait_device_ready();
@@ -174,14 +187,11 @@ void isa_write_word(uint32_t address, uint16_t data) {
 uint8_t isa_read_byte(uint32_t address) {
   isa_set_address(address);
   isa_ale(true);
-  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(false);
-  // delay(0);
 
   isa_memr(true);
-  // delay(0);
   isa_wait_device_ready();
   uint8_t data = isa_read_data();
   isa_memr(false);
@@ -196,15 +206,12 @@ uint16_t isa_read_word(uint32_t address) {
 void isa_outb(uint32_t portAddress, uint8_t data) {
   isa_set_address(portAddress);
   isa_ale(true);
-  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(true);
   isa_set_data(data);
-  // delay(0);
 
   isa_iow(true);
-  // delay(0);
   isa_wait_device_ready();
   isa_iow(false);
 
@@ -214,13 +221,11 @@ void isa_outb(uint32_t portAddress, uint8_t data) {
 uint8_t isa_inb(uint32_t portAddress) {
   isa_set_address(portAddress);
   isa_ale(true);
-  // delay(0);
   isa_ale(false);  // lock upper address bits
 
   isa_enable_output_lines(false);
 
   isa_ior(true);
-  // delay(0);
   isa_wait_device_ready();
   uint8_t data = isa_read_data();
   isa_ior(false);
