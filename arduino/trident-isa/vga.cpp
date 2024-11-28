@@ -199,7 +199,7 @@ void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color) {
   int width = Mode.width;
 
   if (Mode.mode == MODE13H) {
-    // VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
+    VgaIoWriteIx(VGA_SEQ_INDEX, ((1 << ((x % 256) & 3)) << 8) + 0x02);
     isa_write_byte(0xA0000 + (x + (y * Mode.width)), color);
   } else if (Mode.attrib & TVU_PLANAR) {
     VgaIoWriteIx(VGA_GC_INDEX, ((1 << (((x % 256) & 7) ^ 7)) << 8) + 0x08);
@@ -207,4 +207,18 @@ void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color) {
     isa_read_byte(0xA0000 + (y * 80) + (x >> 3));
     isa_write_byte(0xA0000 + (y * 80) + (x >> 3), 0xFF);
   }
+}
+
+void vga_mode12h_screen_clear(uint8_t color) {
+  uint32_t address = VIDEO_MEMORY_GRAPH;
+
+  VgaIoWriteIx(0x3CE,0xFF08);
+  isa_outb(0x3C4,0x02);
+  for(uint16_t i = 0; i < Mode.width_uint8_ts / 2; i++) {
+    isa_write_word(address,0x0000);
+    isa_outb(0x3C5,color);
+    isa_write_word(address,0xFFFF);
+    isa_outb(0x3C5,0x0F);
+    address += 2;
+   }
 }

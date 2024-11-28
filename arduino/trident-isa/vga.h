@@ -79,6 +79,7 @@ uint8_t VgaIoReadIx(uint32_t addr, uint8_t ix);
 
 void vga_set_mode(uint8_t mode);
 
+void vga_mode12h_screen_clear(uint8_t color);
 void vga_set_pixel(uint16_t x, uint16_t y, uint8_t color);
 
 void vga_set_coursor_pos(uint8_t row, uint8_t col);
